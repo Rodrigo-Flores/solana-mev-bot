@@ -1,12 +1,10 @@
 use std::sync::Arc;
 
-use mev_bot_solana::bot::solana_mev_bot::SolanaMevBot;
-use mev_bot_solana::config::Config;
-use mev_bot_solana::dex::dex_manager::DexManager;
-use mev_bot_solana::monitoring::dashboard::Dashboard;
-use mev_bot_solana::monitoring::metrics::Metrics;
-use mev_bot_solana::strategies::copy_trade_strategy::CopyTradeStrategy;
-use mev_bot_solana::strategies::sniping_strategy::SnipingStrategy;
+mod bot;
+mod config;
+mod dex;
+mod monitoring;
+mod strategies;
 use mev_bot_solana::utils::config_parser::parse_config;
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::signature::read_keypair_file;
@@ -20,30 +18,32 @@ async fn main() {
         config.solana.commitment.clone(),
     ));
 
-    let metrics = Arc::new(Metrics::new());
-    let dashboard = Dashboard::new(metrics.clone(), config.monitoring.update_interval);
+    let metrics = Arc::new(monitoring::metrics::Metrics::new());
+    let dashboard = monitoring::dashboard::Dashboard::new(metrics.clone(), config.monitoring.update_interval);
 
-    let dex_manager = Arc::new(tokio::sync::Mutex::new(DexManager::new(
+    let dex_manager = Arc::new(tokio::sync::Mutex::new(dex::dex_integration::DexIntegration::new(
         rpc_client.clone(),
         config.dexes.clone(),
     )));
 
-    let sniping_strategy = Arc::new(tokio::sync::Mutex::new(SnipingStrategy::new(
+    let sniping_strategy = Arc::new(tokio::sync::Mutex::new(strategies::sniping_strategy::SnipingStrategy::new(
         rpc_client.clone(),
         dex_manager.clone(),
         config.bot.max_position_size,
     )));
 
-    let copy_trade_strategy = Arc::new(tokio::sync::Mutex::new(CopyTradeStrategy::new(
+    let copy_trade_strategy = Arc::new(tokio::sync::Mutex::new(strategies::copy_trade_strategy::CopyTradeStrategy::new(
         rpc_client.clone(),
         dex_manager.clone(),
-        config.bot.max_position_size,
+        config.bot.tracked_traders.clone(),
+        config.bot.trade_threshold,
+        config.bot.max_trade_amount,
     )));
 
     let authority_keypair = read_keypair_file(config.bot.keypair_path.clone())
         .expect("Failed to read keypair file");
 
-    let mut mev_bot = SolanaMevBot::new(
+    let mut mev_bot = bot::solana_mev_bot::SolanaMevBot::new(
         rpc_client,
         authority_keypair,
         vec![
