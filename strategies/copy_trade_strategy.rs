@@ -128,15 +128,7 @@ impl CopyTradeStrategy {
             status: OrderStatus::Filled,
         })
     }
-    async fn execute_copy_trade(&self, opportunity: &CopyTradeOpportunity) -> Result<()> {
-        let market = &opportunity.market;
-        let trade = &opportunity.trade;
-        let order = self
-            .dex_manager
-            .lock()
-            .await
-            .place_order(market, trade.order_type, trade.side, trade
-                async fn execute_copy_trade(&self, opportunity: &CopyTradeOpportunity) -> Result<()> {
+async fn execute_copy_trade(&self, opportunity: &CopyTradeOpportunity) -> Result<()> {
     let market = &opportunity.market;
     let trade = &opportunity.trade;
     
@@ -150,4 +142,5 @@ impl CopyTradeStrategy {
     println!("Placed copy trade order: {:?}", order);
     
     Ok(())
+}
 }
